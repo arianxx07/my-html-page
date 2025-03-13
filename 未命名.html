@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>三年(4)班积分系统</title>
+    <style>
+        body {
+            background-color: #e0f7fa;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            width: 90%;
+            margin: 0 auto;
+        }
+        .title {
+            text-align: center;
+            font-size: 2.5em;
+            color: #00796b;
+            margin: 20px 0;
+        }
+        .menu {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .menu button {
+            margin: 0 10px;
+            padding: 10px 20px;
+            font-size: 1.2em;
+            cursor: pointer;
+            background-color: #4caf50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+        .menu button:hover {
+            background-color: #45a049;
+        }
+        .grid {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 20px;
+        }
+        .student-card {
+            width: 180px;
+            padding: 15px;
+            border: 1px solid #00796b;
+            border-radius: 10px;
+            text-align: center;
+            background-color: #ffffff;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            cursor: move;
+        }
+        .student-card:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        .student-name {
+            font-size: 1.5em;
+            color: #000000;
+            margin-bottom: 10px;
+        }
+        .student-score {
+            font-size: 1.5em;
+            color: #d32f2f;
+            margin-bottom: 10px;
+            transition: color 0.3s ease;
+        }
+        .button-group {
+            display: flex;
+            justify-content: space-around;
+        }
+        .button-group button {
+            padding: 8px 15px;
+            font-size: 1.2em;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+        .button-group .minus {
+            background-color: #f44336;
+            color: white;
+        }
+        .button-group .minus:hover {
+            background-color: #d32f2f;
+        }
+        .button-group .plus {
+            background-color: #4caf50;
+            color: white;
+        }
+        .button-group .plus:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="title">三年(4)班积分系统 😊✨</div>
+        <div class="menu">
+            <button id="addAll">全班加分</button>
+            <button id="clearAll">全班清零</button>
+            <button id="rank">排行榜</button>
+            <button id="import">导入积分</button>
+            <button id="export">导出积分</button>
+            <button id="addStudent">添加学生</button>
+        </div>
+        <div class="grid" id="studentGrid"></div>
+    </div>
+    <script>
+        // 从 localStorage 加载学生数据，若无则初始化为空数组
+        let students = JSON.parse(localStorage.getItem('students')) || [];
+        let draggedIndex = null;
+
+        // 保存学生数据到 localStorage
+        function saveStudents() {
+            localStorage.setItem('students', JSON.stringify(students));
+        }
+
+        // 渲染学生卡片
+        function renderStudents() {
+            const grid = document.getElementById('studentGrid');
+            grid.innerHTML = '';
+            students.forEach((student, index) => {
+                const card = document.createElement('div');
+                card.className = 'student-card';
+                card.draggable = true;
+                card.dataset.index = index;
+                card.innerHTML = `
+                    <div class="student-name">${student.name}</div>
+                    <div class="student-score">${student.score}</div>
+                    <div class="button-group">
+                        <button class="minus" onclick="updateScore(${index}, -1)">-</button>
+                        <button class="plus" onclick="updateScore(${index}, 1)">+</button>
+                    </div>
+                `;
+                // 右键删除功能
+                card.addEventListener('contextmenu', (e) => {
+                    e.preventDefault();
+                    if (confirm(`确定要删除学生 ${student.name} 吗？`)) {
+                        students.splice(index, 1);
+                        saveStudents();
+                        renderStudents();
+                    }
+                });
+                // 拖放事件
+                card.addEventListener('dragstart', (e) => {
+                    draggedIndex = index;
+                    e.dataTransfer.setData('text/plain', index);
+                });
+                card.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                });
+                card.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    const targetIndex = parseInt(e.currentTarget.dataset.index, 10);
+                    if (draggedIndex !== targetIndex) {
+                        const [draggedStudent] = students.splice(draggedIndex, 1);
+                        students.splice(targetIndex, 0, draggedStudent);
+                        saveStudents();
+                        renderStudents();
+                    }
+                });
+                grid.appendChild(card);
+            });
+        }
+
+        // 更新学生积分
+        function updateScore(index, delta) {
+            students[index].score += delta;
+            saveStudents();
+            renderStudents();
+        }
+
+        // 全班加分
+        document.getElementById('addAll').addEventListener('click', () => {
+            const delta = parseInt(prompt('请输入要加的分数（可正可负）：'), 10);
+            if (!isNaN(delta)) {
+                students.forEach(student => student.score += delta);
+                saveStudents();
+                renderStudents();
+            }
+        });
+
+        // 全班清零
+        document.getElementById('clearAll').addEventListener('click', () => {
+            if (confirm('确定要清零所有学生的积分吗？')) {
+                students.forEach(student => student.score = 0);
+                saveStudents();
+                renderStudents();
+            }
+        });
+
+        // 排行榜
+        document.getElementById('rank').addEventListener('click', () => {
+            const sortedStudents = [...students].sort((a, b) => b.score - a.score);
+            let rankHtml = '<h2>排行榜</h2><ol>';
+            sortedStudents.forEach((student, index) => {
+                let medal = '';
+                if (index === 0) medal = ' 🥇';
+                else if (index === 1) medal = ' 🥈';
+                else if (index === 2) medal = ' 🥉';
+                rankHtml += `<li>${student.name}: ${student.score}${medal}</li>`;
+            });
+            rankHtml += '</ol>';
+            const rankWindow = window.open('', '排行榜', 'width=400,height=600');
+            rankWindow.document.write(rankHtml);
+        });
+
+        // 导入积分
+        document.getElementById('import').addEventListener('click', () => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.txt';
+            input.onchange = (event) => {
+                const file = event.target.files[0];
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const content = e.target.result;
+                    const lines = content.split('\n');
+                    students = lines.map(line => {
+                        const [name, score] = line.split('，');
+                        return { name: name.trim(), score: parseInt(score.trim(), 10) };
+                    }).filter(student => student.name && !isNaN(student.score));
+                    saveStudents();
+                    renderStudents();
+                };
+                reader.readAsText(file);
+            };
+            input.click();
+        });
+
+        // 导出积分
+        document.getElementById('export').addEventListener('click', () => {
+            const content = students.map(student => `${student.name}，${student.score}`).join('\n');
+            const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = '学生积分.txt';
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+
+        // 添加学生
+        document.getElementById('addStudent').addEventListener('click', () => {
+            const name = prompt('请输入学生姓名：');
+            if (name) {
+                students.unshift({ name, score: 0 });
+                saveStudents();
+                renderStudents();
+            }
+        });
+
+        // 初次渲染
+        renderStudents();
+    </script>
+</body>
+</html>
